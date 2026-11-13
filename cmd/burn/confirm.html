@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>读取一次性秘密 — burn</title>
+<style>
+  :root { --bg:#0b0d10; --fg:#e8ecf1; --dim:#8a94a3; --accent:#ff6b4a; --line:rgba(255,255,255,.09); }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; min-height:100vh; background:
+      radial-gradient(55rem 35rem at 50% -20%, #1b1410 0%, transparent 60%), var(--bg);
+    color: var(--fg); font: 15px/1.7 ui-sans-serif, -apple-system, "Segoe UI", "Noto Sans SC", sans-serif;
+    display:flex; align-items:center; justify-content:center; padding: 24px;
+  }
+  .card {
+    width:100%; max-width: 520px; text-align:center;
+    background: rgba(255,255,255,.035); border:1px solid var(--line);
+    border-radius: 16px; padding: 40px 32px;
+  }
+  h1 { font-size: 21px; margin: 0 0 10px; font-weight: 620; }
+  p { color: var(--dim); margin: 0 0 26px; }
+  code { color: #cfd8e3; font-family: ui-monospace, Menlo, monospace; }
+  button {
+    appearance:none; border:0; cursor:pointer;
+    background: var(--accent); color:#16090a;
+    font: 600 15px/1 ui-sans-serif, inherit;
+    padding: 14px 30px; border-radius: 10px;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+  small { display:block; margin-top:18px; color:#4d5561; font-size:12.5px; }
+</style>
+</head>
+<body>
+<form class="card" method="post" action="{{BASE_URL}}/{{SLUG}}">
+  <h1>这条秘密还没被读过</h1>
+  <p>点下去就会销毁 <code>{{SLUG}}</code>，之后任何人都打不开，包括你自己。</p>
+  <button type="submit">读走并销毁</button>
+  <small>服务器不记录读取者，内容读完即删除。</small>
+</form>
+</body>
+</html>

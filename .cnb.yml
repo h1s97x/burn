@@ -1,0 +1,75 @@
+.check:
+  - stages:
+      - name: 静态检查与单元测试
+        image: golang:1.26.2
+        script: |
+          go vet ./...
+          go test ./...
+
+main:
+  push: !reference [.check]
+  pull_request: !reference [.check]
+
+$:
+  tag_push: !reference [.release]
+
+.release:
+  - docker:
+      image: golang:1.26.2
+    stages:
+      - name: changelog
+        image: cnbcool/changelog
+        exports:
+          latestChangeLog: LATEST_CHANGE_LOG
+      - name: create release
+        type: git:release
+        options:
+          title: ${CNB_BRANCH}
+          description: ${LATEST_CHANGE_LOG}
+          latest: true
+      - name: 构建 linux-amd64
+        script: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o burn-linux-amd64 ./cmd/burn
+      - name: 构建 linux-arm64
+        script: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o burn-linux-arm64 ./cmd/burn
+      - name: 构建 linux-loong64
+        script: CGO_ENABLED=0 GOOS=linux GOARCH=loong64 go build -ldflags="-s -w" -o burn-linux-loong64 ./cmd/burn
+      - name: 构建 darwin-amd64
+        script: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o burn-darwin-amd64 ./cmd/burn
+      - name: 构建 darwin-arm64
+        script: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o burn-darwin-arm64 ./cmd/burn
+      - name: 构建 windows-amd64
+        script: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o burn-windows-amd64.exe ./cmd/burn
+      - name: 构建 windows-arm64
+        script: CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags="-s -w" -o burn-windows-arm64.exe ./cmd/burn
+      - name: 构建 freebsd-amd64
+        script: CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build -ldflags="-s -w" -o burn-freebsd-amd64 ./cmd/burn
+      - name: 构建 freebsd-arm64
+        script: CGO_ENABLED=0 GOOS=freebsd GOARCH=arm64 go build -ldflags="-s -w" -o burn-freebsd-arm64 ./cmd/burn
+      - name: release 上传附件
+        image: cnbcool/attachments:latest
+        settings:
+          attachments:
+            - burn-linux-amd64
+            - burn-linux-arm64
+            - burn-linux-loong64
+            - burn-darwin-amd64
+            - burn-darwin-arm64
+            - burn-windows-amd64.exe
+            - burn-windows-arm64.exe
+            - burn-freebsd-amd64
+            - burn-freebsd-arm64
+  - services:
+      - name: docker
+        options:
+          rootlessBuildkitd:
+            enabled: true
+    env:
+      IMAGE: ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}
+    stages:
+      - name: docker build and push
+        script: |
+          docker buildx build \
+            -t ${IMAGE}:${CNB_BRANCH} \
+            -t ${IMAGE}:latest \
+            --platform linux/amd64,linux/arm64,linux/arm/v7,linux/s390x,linux/ppc64le,linux/riscv64 \
+            --push .

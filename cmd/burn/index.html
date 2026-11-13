@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>burn — 一次性秘密分享</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --fg: #e8ecf1;
+    --dim: #8a94a3;
+    --accent: #ff6b4a;
+    --line: rgba(255,255,255,.09);
+    --card: rgba(255,255,255,.035);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: radial-gradient(60rem 40rem at 15% -10%, #1b1410 0%, transparent 60%),
+                radial-gradient(50rem 35rem at 100% 0%, #101820 0%, transparent 55%),
+                var(--bg);
+    color: var(--fg);
+    font: 15px/1.7 ui-sans-serif, -apple-system, "Segoe UI", "Noto Sans SC", sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8vh 20px 60px;
+  }
+  main { width: 100%; max-width: 720px; }
+  h1 { font-size: 30px; letter-spacing: -.02em; margin: 0 0 8px; font-weight: 650; }
+  h1 span { color: var(--accent); }
+  .lede { color: var(--dim); margin: 0 0 36px; }
+  section {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px 22px; margin-bottom: 16px;
+  }
+  h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .14em;
+    color: var(--dim); margin: 0 0 12px; font-weight: 600;
+  }
+  pre {
+    background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 9px;
+    padding: 13px 15px; overflow-x: auto; margin: 0 0 10px;
+    font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; color: #cfd8e3;
+  }
+  pre .c { color: #56606e; }
+  pre .k { color: var(--accent); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  p { margin: 0 0 10px; color: #b9c2ce; }
+  p:last-child { margin-bottom: 0; }
+  ul { margin: 0; padding-left: 20px; color: #b9c2ce; }
+  li { margin-bottom: 7px; }
+  li::marker { color: var(--accent); }
+  footer { color: #4d5561; font-size: 12.5px; margin-top: 30px; text-align: center; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<main>
+  <h1>burn<span>.</span></h1>
+  <p class="lede">把一段文字变成一次性链接。被读走一次，就永远消失。</p>
+
+  <section>
+    <h2>上传</h2>
+    <pre><span class="c"># 默认 TTL {{DEFAULT_TTL}}</span>
+echo <span class="k">"密码"</span> | curl -T - {{BASE_URL}}
+
+<span class="c"># 自定存活时间（最长 {{MAX_TTL}}）</span>
+cat ~/.ssh/id_ed25519 | curl -T - <span class="k">"{{BASE_URL}}/?ttl=10m"</span></pre>
+    <p>返回一条链接：</p>
+    <pre>{{BASE_URL}}/k3f9x2vq0w7m4n8z</pre>
+  </section>
+
+  <section>
+    <h2>读取</h2>
+    <pre><span class="c"># 读走即销毁，第二次访问就是 404</span>
+curl {{BASE_URL}}/k3f9x2vq0w7m4n8z</pre>
+    <p>浏览器打开会先看到一个确认按钮，点了才真正销毁 —— 免得聊天软件预览链接时替你烧掉秘密。</p>
+  </section>
+
+  <section>
+    <h2>alias</h2>
+    <pre><span class="c"># Linux / macOS</span>
+alias burn=<span class="k">'curl -T - {{BASE_URL}}'</span>
+echo "token" | burn</pre>
+    <pre><span class="c"># Windows PowerShell</span>
+function burn { $input | curl -T - {{BASE_URL}} }</pre>
+  </section>
+
+  <section>
+    <h2>它的边界</h2>
+    <ul>
+      <li>内容原样落盘，靠 0700 目录权限和「读走即删除」保护，不做加密存储。</li>
+      <li>读取是原子的 <code>rename</code>，并发请求只有一个能拿到内容。</li>
+      <li>过期由服务端定期清扫，最短 1 秒，最长 {{MAX_TTL}}。</li>
+      <li>不保留任何访问日志，不记录是谁读的。</li>
+    </ul>
+  </section>
+
+  <footer>无账号 · 无数据库 · 无追踪 · 单二进制</footer>
+</main>
+</body>
+</html>
