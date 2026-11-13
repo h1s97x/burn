@@ -90,7 +90,7 @@ const secretPageHTML = `<!doctype html>
     </aside>
 
     <main class="col">
-      <div class="col-head"><span>最后更新</span><span>此刻</span></div>
+      <div class="col-head"><span>拆封之后</span><span>此刻</span></div>
       <hr class="rule">
       <div class="col-body">
         <p class="letter">秘密已销毁 <span class="ash">·</span></p>
@@ -212,7 +212,7 @@ const binaryPageHTML = `<!doctype html>
     </aside>
 
     <main class="col">
-      <div class="col-head"><span>最后更新</span><span>此刻</span></div>
+      <div class="col-head"><span>拆封之后</span><span>此刻</span></div>
       <hr class="rule">
       <div class="col-body">
         <p class="letter">秘密已销毁 <span class="ash">·</span></p>
