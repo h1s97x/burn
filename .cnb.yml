@@ -6,12 +6,37 @@
           go vet ./...
           go test ./...
 
+# 把本仓库镜像到 GitHub 同名仓库 h1s97x/burn。
+# 用官方 tencentcom/git-sync 插件；凭据（GITHUB_USERNAME / GITHUB_TOKEN）
+# 放在密钥仓库 secret-env 的 env.yml，只在本次任务内注入为环境变量，不落盘。
+.sync-to-github:
+  name: sync-to-github
+  imports:
+    - https://cnb.cool/h1s97x/secret-env/-/blob/main/env.yml
+  stages:
+    - name: sync to github
+      image: tencentcom/git-sync
+      settings:
+        target_url: https://github.com/h1s97x/burn.git
+        auth_type: https
+        username: ${GITHUB_USERNAME}
+        password: ${GITHUB_TOKEN}
+        # 镜像语义：以本仓库为准整体覆盖，连同 tag 一起推送
+        force: true
+        push_tags: true
+
 main:
-  push: !reference [.check]
+  push:
+    - !reference [.check, "0"]
+    - !reference [.sync-to-github]
   pull_request: !reference [.check]
 
 $:
-  tag_push: !reference [.release]
+  tag_push:
+    # 打 tag 时先补一次镜像，再走发布
+    - !reference [.sync-to-github]
+    - !reference [.release, "0"]
+    - !reference [.release, "1"]
 
 .release:
   - docker:
