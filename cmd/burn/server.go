@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"html"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	_ "embed"
 )
@@ -177,9 +179,7 @@ func (s *Server) handleBurn(w http.ResponseWriter, r *http.Request, slug string)
 	}
 
 	if wantsPage {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(strings.Replace(secretPageHTML, "{{CONTENT}}", html.EscapeString(string(data)), 1)))
+		s.writeSecretPage(w, slug, data)
 		return
 	}
 	s.writeSecret(w, data)
@@ -197,6 +197,48 @@ func (s *Server) writeSecret(w http.ResponseWriter, data []byte) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
+}
+
+// textFallback 判断内容能不能安全地塞进 <pre>。服务只搬运字节、不猜编码：
+// 非 UTF-8（如 Windows cmd 的 GBK 中文）和含控制字符的二进制都不能按文本展示，
+// 否则浏览器会把非法字节渲染成一片菱形问号。返回空 reason 表示可以直接显示。
+func textFallback(data []byte) (reason, hint string) {
+	if !utf8.Valid(data) {
+		return "这段内容不是 UTF-8 文本",
+			"直接按文本显示会变成乱码。常见原因：Windows cmd 用 GBK 输出中文，或者上传的本来就是二进制文件。"
+	}
+	for _, r := range string(data) {
+		if (r < 0x20 && r != '\t' && r != '\n' && r != '\r') || r == 0x7f {
+			return "这段内容含有不可打印字符",
+				"看起来是二进制文件，直接按文本显示会缺字或错乱。"
+		}
+	}
+	return "", ""
+}
+
+// writeSecretPage 是浏览器认领成功后的展示页。内容非文本时换成兜底页，把原始字节
+// 以 data URI 内联进这一次响应 —— Claim 之后服务端已经没有第二份可以给。
+func (s *Server) writeSecretPage(w http.ResponseWriter, slug string, data []byte) {
+	reason, hint := textFallback(data)
+
+	var page string
+	if reason == "" {
+		page = strings.Replace(secretPageHTML, "{{CONTENT}}", html.EscapeString(string(data)), 1)
+	} else {
+		encoded := base64.StdEncoding.EncodeToString(data)
+		page = strings.NewReplacer(
+			"{{REASON}}", reason,
+			"{{HINT}}", hint,
+			"{{SIZE}}", strconv.Itoa(len(data)),
+			"{{FILENAME}}", "burn-"+slug+".bin",
+			"{{DATA_URI}}", "data:application/octet-stream;base64,"+encoded,
+			"{{BASE64}}", encoded,
+		).Replace(binaryPageHTML)
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.WriteString(w, page)
 }
 
 func (s *Server) writeGone(w http.ResponseWriter, err error) {

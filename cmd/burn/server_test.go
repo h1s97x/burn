@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -308,5 +310,142 @@ func TestOversizeUploadRejected(t *testing.T) {
 	big := strings.Repeat("a", 8192)
 	if w := upload(t, s, big, ""); w.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("oversize upload: got %d, want 413", w.Code)
+	}
+}
+
+// 模拟 Windows cmd 的 echo "密码"：GBK 编码的中文，外加引号和 CRLF。
+var gbkCmdEcho = []byte{'"', 0xc3, 0xdc, 0xc2, 0xeb, '"', '\r', '\n'}
+
+func slugFromUpload(t *testing.T, w *httptest.ResponseRecorder) string {
+	t.Helper()
+	loc := strings.TrimSpace(w.Body.String())
+	return loc[strings.LastIndex(loc, "/")+1:]
+}
+
+func formClaim(t *testing.T, s *Server, slug string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/"+slug, strings.NewReader(""))
+	req.Header.Set("Accept", "text/html")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	s.handleRoot(w, req)
+	return w
+}
+
+func TestTextFallback(t *testing.T) {
+	cases := []struct {
+		name string
+		data []byte
+		want bool
+	}{
+		{"utf8 中文", []byte("密码"), false},
+		{"tab 换行回车", []byte("a\t\n\r"), false},
+		{"emoji", []byte("🔑"), false},
+		{"GBK 中文", gbkCmdEcho, true},
+		{"NUL", []byte{'a', 0x00}, true},
+		{"DEL", []byte{'a', 0x7f}, true},
+	}
+	for _, c := range cases {
+		reason, _ := textFallback(c.data)
+		if (reason != "") != c.want {
+			t.Errorf("%s: fallback = %q, want fallback=%v", c.name, reason, c.want)
+		}
+	}
+}
+
+func TestNonUTF8SecretOffersRawBytes(t *testing.T) {
+	s, _, _ := newTestServer(t, 0)
+	slug := slugFromUpload(t, upload(t, s, string(gbkCmdEcho), ""))
+
+	page := formClaim(t, s, slug)
+	if page.Code != http.StatusOK {
+		t.Fatalf("form claim: got %d", page.Code)
+	}
+	body := page.Body.String()
+	if !strings.Contains(body, "这段内容不是 UTF-8 文本") || !strings.Contains(body, "8 字节") {
+		t.Fatal("fallback page should explain why the content is not shown as text")
+	}
+	// 原来的 bug 就是把这些非法字节直接塞进 HTML，浏览器显示成一片菱形。
+	if bytes.Contains(page.Body.Bytes(), gbkCmdEcho) {
+		t.Fatal("non-UTF-8 bytes must not be inlined into HTML")
+	}
+	if !strings.Contains(body, `download="burn-`+slug+`.bin"`) {
+		t.Fatal("download filename missing")
+	}
+
+	const prefix = `href="data:application/octet-stream;base64,`
+	i := strings.Index(body, prefix)
+	if i < 0 {
+		t.Fatal("missing inline data URI")
+	}
+	encoded := body[i+len(prefix):]
+	if j := strings.IndexByte(encoded, '"'); j < 0 {
+		t.Fatal("unterminated data URI")
+	} else {
+		encoded = encoded[:j]
+	}
+	got, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		t.Fatalf("bad base64: %v", err)
+	}
+	if !bytes.Equal(got, gbkCmdEcho) {
+		t.Fatalf("download bytes = % x, want % x", got, gbkCmdEcho)
+	}
+	// 下载链接失效时还有 Base64 可复制，内容只在这一次响应里。
+	if !strings.Contains(body, `<textarea readonly spellcheck="false">`+encoded+`</textarea>`) {
+		t.Fatal("base64 fallback missing")
+	}
+
+	// 兜底页不能破坏「只读一次」。
+	req := httptest.NewRequest(http.MethodGet, "/"+slug, nil)
+	req.Header.Set("Accept", "*/*")
+	again := httptest.NewRecorder()
+	s.handleRoot(again, req)
+	if again.Code != http.StatusNotFound {
+		t.Fatalf("second read: got %d, want 404", again.Code)
+	}
+}
+
+func TestBinaryWithControlBytesTakesFallback(t *testing.T) {
+	s, _, _ := newTestServer(t, 0)
+	raw := []byte{'P', 'K', 0x03, 0x04, 0x00, 0x01}
+	slug := slugFromUpload(t, upload(t, s, string(raw), ""))
+
+	page := formClaim(t, s, slug)
+	if !strings.Contains(page.Body.String(), "这段内容含有不可打印字符") {
+		t.Fatal("binary content should take the fallback page")
+	}
+	if bytes.Contains(page.Body.Bytes(), raw) {
+		t.Fatal("binary bytes must not be inlined as text")
+	}
+}
+
+func TestUTF8TextStillRenderedInPre(t *testing.T) {
+	s, _, _ := newTestServer(t, 0)
+	const secret = "这是 UTF-8 中文\ns3cret"
+	slug := slugFromUpload(t, upload(t, s, secret, ""))
+
+	body := formClaim(t, s, slug).Body.String()
+	if !strings.Contains(body, "<pre>"+secret+"</pre>") {
+		t.Fatal("valid UTF-8 text should still be shown inline")
+	}
+	if strings.Contains(body, "这段内容不是 UTF-8 文本") {
+		t.Fatal("valid UTF-8 text must not take the fallback page")
+	}
+}
+
+func TestPlaintextReadKeepsRawBytes(t *testing.T) {
+	s, _, _ := newTestServer(t, 0)
+	slug := slugFromUpload(t, upload(t, s, string(gbkCmdEcho), ""))
+
+	req := httptest.NewRequest(http.MethodGet, "/"+slug, nil)
+	req.Header.Set("Accept", "*/*")
+	w := httptest.NewRecorder()
+	s.handleRoot(w, req)
+	if w.Code != http.StatusOK || !bytes.Equal(w.Body.Bytes(), gbkCmdEcho) {
+		t.Fatalf("curl read must return raw bytes: %d % x", w.Code, w.Body.Bytes())
+	}
+	if got := w.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Fatalf("Content-Type = %q", got)
 	}
 }
