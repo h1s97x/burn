@@ -4,100 +4,146 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noarchive">
-<title>burn — 一次性秘密分享</title>
+<title>阅后即焚 — burn</title>
 <style>
   :root {
-    --bg: #0b0d10;
-    --fg: #e8ecf1;
-    --dim: #8a94a3;
-    --accent: #ff6b4a;
-    --line: rgba(255,255,255,.09);
-    --card: rgba(255,255,255,.035);
+    --paper: #f3f0e6;
+    --ink: #302e28;
+    --soft: #5c584e;
+    --dim: #8d8879;
+    --rule: #cbc5b5;
+    --rule-ink: #5a554a;
+    --seal: #9c3d2b;
+    --serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC", "SimSun", "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; min-height: 100vh;
-    background: radial-gradient(60rem 40rem at 15% -10%, #1b1410 0%, transparent 60%),
-                radial-gradient(50rem 35rem at 100% 0%, #101820 0%, transparent 55%),
-                var(--bg);
-    color: var(--fg);
-    font: 15px/1.7 ui-sans-serif, -apple-system, "Segoe UI", "Noto Sans SC", sans-serif;
-    display: flex; flex-direction: column; align-items: center;
-    padding: 8vh 20px 60px;
+    background: radial-gradient(90rem 60rem at 8% -10%, #f8f5ec 0%, transparent 55%), var(--paper);
+    color: var(--ink);
+    font-family: var(--serif); font-size: 15px; line-height: 1.95;
+    -webkit-font-smoothing: antialiased;
   }
-  main { width: 100%; max-width: 720px; }
-  h1 { font-size: 30px; letter-spacing: -.02em; margin: 0 0 8px; font-weight: 650; }
-  h1 span { color: var(--accent); }
-  .lede { color: var(--dim); margin: 0 0 36px; }
-  section {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 20px 22px; margin-bottom: 16px;
+  .sheet { max-width: 1100px; margin: 0 auto; padding: 9vh 44px 100px; }
+  .masthead { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
+  .brand { font-family: var(--mono); font-size: 11px; line-height: 1.6; letter-spacing: .24em; text-transform: uppercase; color: var(--dim); }
+  .stamp { font-size: 12px; letter-spacing: .16em; color: var(--dim); }
+  .layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 68px; margin-top: 52px; }
+  .aside-head { height: 52px; display: flex; align-items: center; gap: 12px; }
+  .col-head { height: 52px; display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 14px; font-size: 12px; letter-spacing: .1em; color: var(--dim); }
+  .seal {
+    flex: none; width: 44px; height: 44px; border: 1px solid var(--seal); border-radius: 50%;
+    color: var(--seal); display: flex; align-items: center; justify-content: center;
+    font-size: 19px; line-height: 1; transform: rotate(-8deg);
   }
-  h2 {
-    font-size: 12px; text-transform: uppercase; letter-spacing: .14em;
-    color: var(--dim); margin: 0 0 12px; font-weight: 600;
-  }
+  hr.rule { border: 0; border-top: 1px solid var(--rule-ink); margin: 0; }
+  hr.thin { border-top: 1px solid var(--rule); }
+  h1.title { font-size: 42px; line-height: 1.3; letter-spacing: .12em; font-weight: 700; margin: 26px 0; }
+  .lede { color: var(--soft); font-size: 14px; margin: 22px 0 26px; line-height: 2; }
+  .nav { font-size: 12.5px; letter-spacing: .14em; color: var(--dim); margin: 20px 0; }
+  .meta { font-size: 12px; letter-spacing: .08em; color: var(--dim); margin: 18px 0 0; }
+  .col-body { padding-top: 34px; }
+  .intro { font-size: 16px; line-height: 2.1; margin: 0 0 44px; }
+  .intro u { text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1px; }
+  .entry { border-left: 1px solid var(--rule); padding: 0 0 0 28px; margin: 0 0 46px; }
+  .entry h2 { font-size: 15px; letter-spacing: .16em; font-weight: 700; margin: 0 0 18px; }
+  .entry h2 .num { color: var(--seal); font-weight: 400; margin-right: 12px; }
+  .entry p { color: var(--soft); margin: 0 0 12px; font-size: 14.5px; }
   pre {
-    background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 9px;
-    padding: 13px 15px; overflow-x: auto; margin: 0 0 10px;
-    font: 13px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; color: #cfd8e3;
+    background: rgba(48,46,40,.04); border-left: 2px solid var(--rule-ink);
+    padding: 14px 18px; margin: 0 0 14px; overflow-x: auto;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.9; color: var(--ink); white-space: pre;
   }
-  pre .c { color: #56606e; }
-  pre .k { color: var(--accent); }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  p { margin: 0 0 10px; color: #b9c2ce; }
-  p:last-child { margin-bottom: 0; }
-  ul { margin: 0; padding-left: 20px; color: #b9c2ce; }
-  li { margin-bottom: 7px; }
-  li::marker { color: var(--accent); }
-  footer { color: #4d5561; font-size: 12.5px; margin-top: 30px; text-align: center; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  pre .c { color: var(--dim); }
+  pre .k { color: var(--seal); }
+  code { font-family: var(--mono); font-size: 12.5px; color: var(--seal); }
+  .date { font-style: italic; font-size: 12.5px; letter-spacing: .06em; color: var(--dim); margin: 16px 0 0; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { color: var(--soft); font-size: 14.5px; margin-bottom: 12px; padding-left: 20px; position: relative; }
+  li::before { content: "—"; position: absolute; left: 0; color: var(--seal); }
+  footer { border-top: 1px solid var(--rule); padding-top: 18px; color: var(--dim); font-size: 12px; letter-spacing: .12em; }
+  @media (max-width: 860px) {
+    .sheet { padding: 6vh 22px 70px; }
+    .layout { grid-template-columns: 1fr; gap: 34px; margin-top: 32px; }
+    h1.title { font-size: 36px; }
+    .col-body { padding-top: 28px; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>burn<span>.</span></h1>
-  <p class="lede">把一段文字变成一次性链接。被读走一次，就永远消失。</p>
+<div class="sheet">
+  <header class="masthead">
+    <span class="brand">/ burn /</span>
+    <span class="stamp">一条链接 · 只活一次</span>
+  </header>
 
-  <section>
-    <h2>上传</h2>
-    <pre><span class="c"># 默认 TTL {{DEFAULT_TTL}}</span>
+  <div class="layout">
+    <aside>
+      <div class="aside-head">
+        <span class="seal">焚</span>
+        <span class="brand">Burn after reading</span>
+      </div>
+      <hr class="rule">
+      <h1 class="title">阅后即焚</h1>
+      <hr class="rule">
+      <p class="lede">把一段文字变成一条链接。被读走一次，就永远消失。</p>
+      <p class="nav">/ 关于　/ 用法　/ 边界　/ 不成文</p>
+      <hr class="rule thin">
+      <p class="meta">默认存活 {{DEFAULT_TTL}}　·　最长 {{MAX_TTL}}</p>
+    </aside>
+
+    <main class="col">
+      <div class="col-head"><span>最后更新</span><span>此刻</span></div>
+      <hr class="rule">
+      <div class="col-body">
+        <p class="intro">一条单向的、<u>不可逆</u>的时间轴：写下之后，它只在被打开一次之前存在。读完，就没有第二次。</p>
+
+        <article class="entry">
+          <h2><span class="num">一</span>上传</h2>
+          <pre><span class="c"># 默认 TTL {{DEFAULT_TTL}}</span>
 echo <span class="k">"密码"</span> | curl -T - {{BASE_URL}}
 
 <span class="c"># 自定存活时间（最长 {{MAX_TTL}}）</span>
 cat ~/.ssh/id_ed25519 | curl -T - <span class="k">"{{BASE_URL}}/?ttl=10m"</span></pre>
-    <p>返回一条链接：</p>
-    <pre>{{BASE_URL}}/k3f9x2vq0w7m4n8z</pre>
-  </section>
+          <p>返回一条链接：</p>
+          <pre>{{BASE_URL}}/k3f9x2vq0w7m4n8z</pre>
+          <p class="date">写下 / 默认 {{DEFAULT_TTL}}</p>
+        </article>
 
-  <section>
-    <h2>读取</h2>
-    <pre><span class="c"># 读走即销毁，第二次访问就是 404</span>
+        <article class="entry">
+          <h2><span class="num">二</span>读取</h2>
+          <pre><span class="c"># 读走即销毁，第二次访问就是 404</span>
 curl {{BASE_URL}}/k3f9x2vq0w7m4n8z</pre>
-    <p>浏览器打开会先看到一个确认按钮，点了才真正销毁 —— 免得聊天软件预览链接时替你烧掉秘密。</p>
-  </section>
+          <p>浏览器打开会先看到一个确认按钮，点了才真正销毁 —— 免得聊天软件预览链接时替你烧掉秘密。</p>
+          <p class="date">读走 / 只此一次</p>
+        </article>
 
-  <section>
-    <h2>alias</h2>
-    <pre><span class="c"># Linux / macOS</span>
+        <article class="entry">
+          <h2><span class="num">三</span>别名</h2>
+          <pre><span class="c"># Linux / macOS</span>
 alias burn=<span class="k">'curl -T - {{BASE_URL}}'</span>
 echo "token" | burn</pre>
-    <pre><span class="c"># Windows PowerShell</span>
+          <pre><span class="c"># Windows PowerShell</span>
 function burn { $input | curl -T - {{BASE_URL}} }</pre>
-  </section>
+          <p class="date">顺手 / 不必记</p>
+        </article>
 
-  <section>
-    <h2>它的边界</h2>
-    <ul>
-      <li>内容原样落盘，靠 0700 目录权限和「读走即删除」保护，不做加密存储。</li>
-      <li>读取是原子的 <code>rename</code>，并发请求只有一个能拿到内容。</li>
-      <li>过期由服务端定期清扫，最短 1 秒，最长 {{MAX_TTL}}。</li>
-      <li>不保留任何访问日志，不记录是谁读的。</li>
-    </ul>
-  </section>
+        <article class="entry">
+          <h2><span class="num">四</span>它的边界</h2>
+          <ul>
+            <li>内容原样落盘，靠 0700 目录权限和「读走即删除」保护，不做加密存储。</li>
+            <li>读取是原子的 <code>rename</code>，并发请求只有一个能拿到内容。</li>
+            <li>过期由服务端定期清扫，最短 1 秒，最长 {{MAX_TTL}}。</li>
+            <li>不保留任何访问日志，不记录是谁读的。</li>
+          </ul>
+          <p class="date">边界 / 说在前面</p>
+        </article>
 
-  <footer>无账号 · 无数据库 · 无追踪 · 单二进制</footer>
-</main>
+        <footer>无账号　·　无数据库　·　无追踪　·　单二进制</footer>
+      </div>
+    </main>
+  </div>
+</div>
 </body>
 </html>
